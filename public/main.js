@@ -1,55 +1,71 @@
-const map = L.map('map').setView([20.5937, 78.9629], 4);
 
-// const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-//     maxZoom: 19,
-//     // attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-// }).addTo(map);
-var geojson;
-const xhr = new XMLHttpRequest();
-xhr.open("GET", 'http://localhost:3000/countriesData', true);
-xhr.responseType = 'json';
-xhr.send();
-
-xhr.onload = async() => {
-    // if (xhr.status != 200) { // analyze HTTP status of the response
-    //   alert(`Error ${xhr.status}: ${xhr.statusText}`); // e.g. 404: Not Found
-    // } else { // show the result
-    //     console.log(xhr)
-    //   alert(`Done, got ${xhr.response.length} bytes`); // response is the server response
-    // }
-    if(xhr.status!=200)
-        console.log(`Error ${xhr.status}: ${xhr.statusText}`);
-    else    {
-        function style(feature) {
-            return {
-                fillColor: '#E31A1C',
-                weight: 2,
-                opacity: 1,
-                color: 'white',
-                dashArray: '3',
-                fillOpacity: 0.7
-            };
-        }
-
-        // const map = new Map(Object.entries(xhr.response));
-        // console.log(map)
-        geojson= L.geoJson(xhr.response,{
-            style: style,
-            onEachFeature: onEachFeature
-        }).addTo(map);
-    }
-  };
+let geojson;
+let hash = new Map();
+let countriesList =[];
+const countryInput = document.querySelector('#textbox');
 
 
+const map = L.map("map", {
+    maxZoom: 4,
+     zoomControl: false 
+}).setView([20.5937, 78.9629], 4);
 
-  function highlightFeature(e) {
+//Data Handling
+async function sendXhrRequest(url, cFunction) {
+    const xhr = new XMLHttpRequest();
+    xhr.onload = function () {
+        cFunction(xhr.response);
+    };
+    xhr.open("GET", url, true);
+    xhr.send();
+}
+
+sendXhrRequest("http://localhost:3000/countriesData", setGeoLayer); //GET country data
+sendXhrRequest("http://localhost:3000/timeData", timeData);
+
+function setGeoLayer(data) {
+    const countriesData = JSON.parse(data);
+    geojson = L.geoJson(countriesData, {
+        style: style,
+        onEachFeature: onEachFeature,
+    }).addTo(map);
+}
+
+function timeData(data) {
+    const timeData = JSON.parse(data);
+    timeData.forEach((data) => {
+        hash.set(data.name, data.timezone_offset)
+        countriesList.push(data.name);
+    })
+    // console.log(countriesList)
+}
+
+
+//Map Styling
+function getColor() {
+    
+}
+
+
+function style(feature) {
+    return {
+        fillColor: "#808080",
+        weight: 2,
+        opacity: 1,
+        color: "white",
+        dashArray: "3",
+        fillOpacity: 0.7,
+    };
+}
+
+function highlightFeature(e) {
     var layer = e.target;
 
     layer.setStyle({
         weight: 5,
-        color: '#666',
-        dashArray: '',
-        fillOpacity: 0.7
+        color: "#666",
+        dashArray: "",
+        fillOpacity: 0.7,
     });
 
     layer.bringToFront();
@@ -66,6 +82,32 @@ function onEachFeature(feature, layer) {
     layer.on({
         mouseover: highlightFeature,
         mouseout: resetHighlight,
-        click: zoomToFeature
+        click: zoomToFeature,
     });
+}
+
+
+//Auto Complete 
+function autocompleteMatch(input) {
+    if (input == '') {
+      return [];
+    }
+    let reg = new RegExp(input)
+    return search_terms.filter(function(term) {
+        if (term.match(reg)) {
+          return term;
+        }
+    });
+  }
+
+countryInput.addEventListener("keyup", (e) => {
+    if (e.key === "Enter") {
+        document.querySelector('.leaflet-pane').style.filter=null;
+        document.querySelector('.backfiller').remove();
+    }
+});
+
+
+window.onload = () => {
+    document.querySelector('.leaflet-pane').style.filter= 'blur(1.5px)'
 }
