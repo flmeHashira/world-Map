@@ -1,16 +1,11 @@
 
+let geoJsonData, timeData;
 let geojson;
 let hash = new Map();
-let countriesList =[];
-const countryInput = document.querySelector('#textbox');
+let countriesList = [];
+const maps ={};
+let origin_time;
 
-
-const map = L.map("map", {
-    maxZoom: 4,
-     zoomControl: false 
-}).setView([20.5937, 78.9629], 4);
-
-//Data Handling
 async function sendXhrRequest(url, cFunction) {
     const xhr = new XMLHttpRequest();
     xhr.onload = function () {
@@ -20,36 +15,66 @@ async function sendXhrRequest(url, cFunction) {
     xhr.send();
 }
 
-sendXhrRequest("http://localhost:3000/countriesData", setGeoLayer); //GET country data
-sendXhrRequest("http://localhost:3000/timeData", timeData);
+sendXhrRequest("http://localhost:3000/timeData", timeDataHandle)
+sendXhrRequest("http://localhost:3000/countriesData", (data) => {
+    geoJsonData = JSON.parse(data);
+});
 
-function setGeoLayer(data) {
-    const countriesData = JSON.parse(data);
-    geojson = L.geoJson(countriesData, {
-        style: style,
-        onEachFeature: onEachFeature,
-    }).addTo(map);
-}
-
-function timeData(data) {
-    const timeData = JSON.parse(data);
+function timeDataHandle(data) {
+    timeData = JSON.parse(data);
+    console.log(timeData[2])
     timeData.forEach((data) => {
         hash.set(data.name, data.timezone_offset)
         countriesList.push(data.name);
     })
-    // console.log(countriesList)
 }
 
+function createMap(coord)   {
+    let coordArr= coord.split(',');
+    maps[0] = L.map("map", {
+        maxZoom: 4,
+        zoomControl: false,
+        zoomSnap: 0.5
+    }).setView([coordArr[0], coordArr[1]], 4);
+    setGeoLayer()
+}
+function setGeoLayer() {
+    geojson = L.geoJson(geoJsonData, {
+        style: style,
+        onEachFeature: onEachFeature,
+    }).addTo(maps[0]);
+}
+
+//Offset Calculate
+function offset(origin, number)   {
+    if(!Number.isInteger(origin) && Number.isInteger(origin))
+        return origin+number-0.6+1;
+    else
+        return origin+number;
+}
 
 //Map Styling
-function getColor() {
-    
-}
+function getColor(country) {
+    const obj = timeData.find(o => o.name === country)
+    if (typeof obj === 'undefined')
+        return '#0808';
+    let localTime= obj.timezone_offset;
+    let d = offset(origin_time, localTime)
+    console.log(obj)
+    return d > 11 ? '#800026' :
+           d > 9 && d<=10  ? '#BD0026' :
+           d >8  && d<=9  ? '#E31A1C' :
+           d >7  && d<=8  ? '#FC4E2A' :
+           d >6  && d<=7   ? '#FD8D3C' :
+           d >3  && d<=6   ? '#FEB24C' :
+           d >1  && d<=3   ? '#FED976' :
+                      '#FFEDA0';
 
+}
 
 function style(feature) {
     return {
-        fillColor: "#808080",
+        fillColor: getColor(feature.properties.ADMIN),
         weight: 2,
         opacity: 1,
         color: "white",
@@ -59,15 +84,13 @@ function style(feature) {
 }
 
 function highlightFeature(e) {
-    var layer = e.target;
-
+    let layer = e.target;
     layer.setStyle({
         weight: 5,
         color: "#666",
         dashArray: "",
         fillOpacity: 0.7,
     });
-
     layer.bringToFront();
 }
 function resetHighlight(e) {
@@ -75,7 +98,7 @@ function resetHighlight(e) {
 }
 
 function zoomToFeature(e) {
-    map.fitBounds(e.target.getBounds());
+    maps[0].fitBounds(e.target.getBounds());
 }
 
 function onEachFeature(feature, layer) {
@@ -88,26 +111,42 @@ function onEachFeature(feature, layer) {
 
 
 //Auto Complete 
+const countryInput = document.querySelector('#textbox');
+const resList = document.querySelector('.autocompleteList');
+
 function autocompleteMatch(input) {
     if (input == '') {
-      return [];
+        return [];
     }
-    let reg = new RegExp(input)
-    return search_terms.filter(function(term) {
-        if (term.match(reg)) {
-          return term;
-        }
+    return countriesList.filter((term) => {
+        if (term.toLowerCase().includes(input.toLowerCase()))
+            return term;
     });
+}
+function showResults(val) {
+    resList.innerHTML = '';
+    let list = '';
+    let terms = autocompleteMatch(val);
+    terms.forEach((term) => {
+        list+= `<li>${term}</li>`
+    })
+    resList.innerHTML = `${list}`;
   }
 
-countryInput.addEventListener("keyup", (e) => {
-    if (e.key === "Enter") {
-        document.querySelector('.leaflet-pane').style.filter=null;
+
+//Event Listener for autocomplete
+
+resList.onclick = async (evt) => {
+    let country = evt.target.innerHTML;
+    let obj = timeData.find(o => o.name === country)
+    origin_time = obj.timezone_offset;
+    createMap(obj.latlong)
+    document.querySelector('.backfiller').remove();
+} 
+
+countryInput.addEventListener("keyup", (evt) => {
+    showResults(countryInput.value);
+    if (evt.key === "Enter") {
         document.querySelector('.backfiller').remove();
     }
 });
-
-
-window.onload = () => {
-    document.querySelector('.leaflet-pane').style.filter= 'blur(1.5px)'
-}
