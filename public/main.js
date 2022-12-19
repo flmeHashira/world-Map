@@ -1,11 +1,11 @@
-
 let geoJsonData, timeData;
-let geojson;
+let geojson;        //geojson map layer
 let hash = new Map();
 let countriesList = [];
 const maps ={};
-let origin_time;
+let origin_time;    //UTC Offset of selected Native Region
 
+//Function to request Data from Backend
 async function sendXhrRequest(url, cFunction) {
     const xhr = new XMLHttpRequest();
     xhr.onload = function () {
@@ -22,7 +22,7 @@ sendXhrRequest("http://localhost:3000/countriesData", (data) => {
 
 function timeDataHandle(data) {
     timeData = JSON.parse(data);
-    console.log(timeData[2])
+    // console.log(timeData)
     timeData.forEach((data) => {
         hash.set(data.name, data.timezone_offset)
         countriesList.push(data.name);
@@ -32,10 +32,10 @@ function timeDataHandle(data) {
 function createMap(coord)   {
     let coordArr= coord.split(',');
     maps[0] = L.map("map", {
-        maxZoom: 4,
-        zoomControl: false,
+        maxZoom: 5,
+        // zoomControl: false,
         zoomSnap: 0.5
-    }).setView([coordArr[0], coordArr[1]], 4);
+    }).setView([coordArr[0], coordArr[1]], 3);
     setGeoLayer()
 }
 function setGeoLayer() {
@@ -45,30 +45,52 @@ function setGeoLayer() {
     }).addTo(maps[0]);
 }
 
-//Offset Calculate
-function offset(origin, number)   {
-    if(!Number.isInteger(origin) && Number.isInteger(origin))
-        return origin+number-0.6+1;
-    else
-        return origin+number;
+
+//Returns offset time from chosen origin.
+function timeOffset(origin, time) {
+    if(origin==0)
+        return time;
+    if(origin>0) {
+        if(time<-12+origin)   {
+            let inp_start = -12+origin-1, inp_end = -12;
+            let out_start = 12, out_end = -1*inp_start;
+            let slope = (out_end-out_start)/(inp_end-inp_start);
+            return out_start + slope*(time-inp_start)
+        }
+        return time-origin;
+    }
+    else {
+        if(time>12+origin)  {
+            let inp_start = 12+origin+1, inp_end = 12;
+            let out_start = -12, out_end = -1*inp_start;
+            let slope = (out_end-out_start)/(inp_end-inp_start);
+            return out_start + slope*(time-inp_start);
+        }
+        return time-origin;
+    }
 }
 
 //Map Styling
 function getColor(country) {
     const obj = timeData.find(o => o.name === country)
-    if (typeof obj === 'undefined')
-        return '#0808';
+    if (typeof obj === 'undefined') {
+        return '#f0f0f0';
+    }
     let localTime= obj.timezone_offset;
-    let d = offset(origin_time, localTime)
-    console.log(obj)
-    return d > 11 ? '#800026' :
-           d > 9 && d<=10  ? '#BD0026' :
-           d >8  && d<=9  ? '#E31A1C' :
-           d >7  && d<=8  ? '#FC4E2A' :
-           d >6  && d<=7   ? '#FD8D3C' :
-           d >3  && d<=6   ? '#FEB24C' :
-           d >1  && d<=3   ? '#FED976' :
-                      '#FFEDA0';
+    let offsetTimeArr = timeOffset(Math.floor(origin_time), Math.floor(localTime));
+    let d = offsetTimeArr;
+    const colorArr = ['#9e0142', '#d53e4f', '#f46d43', '#fdae61', '#fee08b', '#ffffbf', '#e6f598', '#abdda4', '#66c2a5', '#3288bd', '#5e4fa2'];
+    if(d>9)
+        return colorArr[0];
+    else if(d<-9)
+        return colorArr[10];
+    else {
+        let inp_start = 9, inp_end = -9;
+        let out_start = 1, out_end = 9;
+        let slope = (out_end-out_start)/(inp_end-inp_start);
+        let ans = Math.round(out_start + slope*(d-inp_start))
+        return colorArr[ans];
+    }
 
 }
 
@@ -131,7 +153,7 @@ function showResults(val) {
         list+= `<li>${term}</li>`
     })
     resList.innerHTML = `${list}`;
-  }
+}
 
 
 //Event Listener for autocomplete

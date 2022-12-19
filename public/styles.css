@@ -169,8 +169,6 @@
 }
 
 
-
-
 .inputBox > input::placeholder {
     color: rgba(255, 122, 122, 0.5);
     transition: all 0.3s ease;
@@ -187,6 +185,12 @@
     padding: 0.1rem 0.6rem;
     font-size: 0.95rem;
     color: rgba(255, 122, 122, 0.4);
+  }
+
+  @media (min-resolution: 2ddpx) {
+    svg {
+      shape-rendering: optimizeSpeed;
+    }
   }
 
   
