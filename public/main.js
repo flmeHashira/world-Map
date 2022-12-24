@@ -3,7 +3,7 @@ let geojson;        //geojson map layer
 let hash = new Map();
 let countriesList = [];
 const maps ={};
-let origin_time;    //UTC Offset of selected Native Region
+let origin_time, vectorGrid;   //UTC Offset of selected Native Region
 
 //Function to request Data from Backend
 async function sendXhrRequest(url, cFunction) {
@@ -29,14 +29,18 @@ function timeDataHandle(data) {
     })
 }
 
+
 function createMap(coord)   {
     let coordArr= coord.split(',');
     maps[0] = L.map("map", {
         maxZoom: 5,
         // zoomControl: false,
-        zoomSnap: 0.5
+        zoomSnap: 0.5,
+        worldCopyJump: true,
+        // trackResize: true,
     }).setView([coordArr[0], coordArr[1]], 3);
     setGeoLayer()
+    setVectorLayer()
 }
 function setGeoLayer() {
     geojson = L.geoJson(geoJsonData, {
@@ -44,6 +48,28 @@ function setGeoLayer() {
         onEachFeature: onEachFeature,
     }).addTo(maps[0]);
 }
+
+
+function setVectorLayer()   {
+        vectorGrid = L.vectorGrid.slicer( geoJsonData, {
+        rendererFactory: L.svg.tile,
+        vectorTileLayerStyles: {
+            sliced: function(properties, zoom) {
+                return {
+                    fillColor: getColor(properties.ADMIN),
+                     fillOpacity: 0.7,
+                    stroke: false,
+                    fill: true
+                }
+            }
+        },
+        interactive: true,
+        getFeatureId: function(f) {
+            return f.properties.ADMIN;
+        }
+    }).addTo(maps[0]);
+}
+
 
 
 //Returns offset time from chosen origin.
@@ -101,7 +127,7 @@ function style(feature) {
         opacity: 1,
         color: "white",
         dashArray: "3",
-        fillOpacity: 0.7,
+        fillOpacity: 0,
     };
 }
 
@@ -111,7 +137,7 @@ function highlightFeature(e) {
         weight: 5,
         color: "#666",
         dashArray: "",
-        fillOpacity: 0.7,
+        fillOpacity: 0,
     });
     layer.bringToFront();
 }
