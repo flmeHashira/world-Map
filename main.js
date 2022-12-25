@@ -3,8 +3,8 @@ let geojson;        //geojson map layer
 let hash = new Map();
 let countriesList = [];
 const maps ={};
-let origin_time, vectorGrid;   //UTC Offset of selected Native Region
-
+let origin_time, vectorGrid, props;  //UTC Offset of selected Native Region
+let timer;
 
 
 function timeDataHandle(data) {
@@ -88,6 +88,8 @@ function timeOffset(origin, time) {
     }
 }
 
+
+
 // Legend and Widgets
 
 let legend = L.control({position: 'bottomright'}),
@@ -126,7 +128,40 @@ info.update = function (props) {
         : 'Hover over a country');
 };
 
+info.detail = function (props)  {
+    let initDate = new Date().getTime(); 
+    let obj = timeData.find(o => o.name === props.ADMIN)
+    let offset1 = new Date().getTimezoneOffset(),
+        offset2 = obj.timezone_offset;
 
+    offset2 = (offset2+"").split(".");
+    let hrs = offset2[0], mins;
+    (offset2.length ==1)?   mins=0: mins = offset2[1];
+    if(mins==3)
+        mins = 30;
+    offset1 = offset1*60*1000;
+    offset2 = (hrs*60*60*1000)+(mins*60*1000);
+    
+    let date = new Date(initDate + offset1 + offset2);
+
+    let hh = date.getHours();
+    let mm = date.getMinutes();
+    let ss = date.getSeconds();
+  
+     hh = (hh < 10) ? "0" + hh : hh;
+     mm = (mm < 10) ? "0" + mm : mm;
+     ss = (ss < 10) ? "0" + ss : ss;
+      
+     let time = hh + ":" + mm + ":" + ss;
+    this._div.innerHTML =  this._div.innerHTML = '<h4>Current Time</h4>'+'<b>' 
+    + props.ADMIN + '</b><br />'+time+'<br>';
+    
+    timer = setTimeout(function(){ info.detail(props) }, 1000);
+}
+
+function timediff(time, offset) {
+    let offsetArr 
+}
 
 
 //Map Styling
@@ -170,6 +205,7 @@ function style(feature) {
 
 function highlightFeature(e) {
     let layer = e.target;
+    // clearTimeout(timer);
     layer.setStyle({
         weight: 5,
         color: "#666",
@@ -177,7 +213,8 @@ function highlightFeature(e) {
         fillOpacity: 0,
     });
     layer.bringToFront();
-    info.update(layer.feature.properties);
+    props = layer.feature.properties;
+    info.update(props);
 }
 function resetHighlight(e) {
     geojson.resetStyle(e.target);
@@ -186,6 +223,9 @@ function resetHighlight(e) {
 
 function zoomToFeature(e) {
     maps[0].fitBounds(e.target.getBounds());
+    props = e.target.feature.properties;
+    clearTimeout(timer);
+    info.detail(props);
 }
 
 function onEachFeature(feature, layer) {
