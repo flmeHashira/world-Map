@@ -225,13 +225,17 @@ function showResults(val) {
 //Event Listener for autocomplete
 
 document.addEventListener("DOMContentLoaded", () => {
-    fetch(`${document.URL}timeData`)
+    fetch('countries_time.json')
     .then((response) => response.json())
-    .then((data) => timeDataHandle(data));
+    .then((data) => {
+        timeDataHandle(data)
+    });
    
-    fetch(`${document.URL}countriesData`)
+    fetch('countries.geojson')
     .then((response) => response.json())
-    .then((data) => geoJsonData = data);
+    .then((data) => {
+        geoJsonData = data
+    });
     
     resList.onclick = async (evt) => {
         let country = evt.target.innerHTML;
