@@ -5,24 +5,10 @@ let countriesList = [];
 const maps ={};
 let origin_time, vectorGrid;   //UTC Offset of selected Native Region
 
-//Function to request Data from Backend
-async function sendXhrRequest(url, cFunction) {
-    const xhr = new XMLHttpRequest();
-    xhr.onload = function () {
-        cFunction(xhr.response);
-    };
-    xhr.open("GET", url, true);
-    xhr.send();
-}
 
-sendXhrRequest("http://localhost:3000/timeData", timeDataHandle)
-sendXhrRequest("http://localhost:3000/countriesData", (data) => {
-    geoJsonData = JSON.parse(data);
-});
 
 function timeDataHandle(data) {
-    timeData = JSON.parse(data);
-    // console.log(timeData)
+    timeData = data;
     timeData.forEach((data) => {
         hash.set(data.name, data.timezone_offset)
         countriesList.push(data.name);
@@ -34,14 +20,21 @@ function createMap(coord)   {
     let coordArr= coord.split(',');
     maps[0] = L.map("map", {
         maxZoom: 5,
+        minZoom: 3,
         // zoomControl: false,
         zoomSnap: 0.5,
-        worldCopyJump: true,
+        maxBounds: [[-90, -180],[90, 180]],
+        // worldCopyJump: true,
         // trackResize: true,
     }).setView([coordArr[0], coordArr[1]], 3);
     setGeoLayer()
     setVectorLayer()
+    legend.addTo(maps[0]);
+    info.addTo(maps[0]);
 }
+
+//Add tile layer
+
 function setGeoLayer() {
     geojson = L.geoJson(geoJsonData, {
         style: style,
@@ -49,14 +42,13 @@ function setGeoLayer() {
     }).addTo(maps[0]);
 }
 
-
 function setVectorLayer()   {
         vectorGrid = L.vectorGrid.slicer( geoJsonData, {
         rendererFactory: L.svg.tile,
         vectorTileLayerStyles: {
             sliced: function(properties, zoom) {
                 return {
-                    fillColor: getColor(properties.ADMIN),
+                    fillColor: getColorCountry(properties.ADMIN),
                      fillOpacity: 0.7,
                     stroke: false,
                     fill: true
@@ -96,15 +88,60 @@ function timeOffset(origin, time) {
     }
 }
 
+// Legend and Widgets
+
+let legend = L.control({position: 'bottomright'}),
+    info = L.control();
+
+legend.onAdd = function (map) {
+    let grades = [-9,-7,-5,-3,-1,2,4,6,8,9];
+    let div = L.DomUtil.create('div', 'info legend'),
+        labels = [];
+
+    // loop through our density intervals and generate a label with a colored square for each interval
+    div.innerHTML +=
+    '<i style="background:'+getColor(-11)+'"></i>'+'<'+grades[0]+'<br>'; 
+
+    for (let i = 0; i < grades.length-1; i++) {
+        div.innerHTML +=
+            '<i style="background:'+getColor(grades[i])+'"></i> ' +
+            grades[i] +'&nbsp;'+ '&ndash;'+'&nbsp;' + grades[i + 1] + '<br>';
+    }
+    div.innerHTML +=
+    '<i style="background:'+getColor(11)+'"></i>'+'>'+9+'<br>'; 
+
+    return div;
+};
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.update();
+    return this._div;
+};
+
+// method that we will use to update the control based on feature properties passed
+info.update = function (props) {
+    this._div.innerHTML =  (props ?
+        '<b>' + props.ADMIN + '</b><br />'
+        : 'Hover over a country');
+};
+
+
+
+
 //Map Styling
-function getColor(country) {
+
+function getColorCountry(country)  {
     const obj = timeData.find(o => o.name === country)
     if (typeof obj === 'undefined') {
         return '#f0f0f0';
     }
     let localTime= obj.timezone_offset;
     let offsetTimeArr = timeOffset(Math.floor(origin_time), Math.floor(localTime));
-    let d = offsetTimeArr;
+    return getColor(offsetTimeArr);
+}
+
+function getColor(d) {
     const colorArr = ['#9e0142', '#d53e4f', '#f46d43', '#fdae61', '#fee08b', '#ffffbf', '#e6f598', '#abdda4', '#66c2a5', '#3288bd', '#5e4fa2'];
     if(d>9)
         return colorArr[0];
@@ -122,7 +159,7 @@ function getColor(country) {
 
 function style(feature) {
     return {
-        fillColor: getColor(feature.properties.ADMIN),
+        fillColor: '#FFFF',
         weight: 2,
         opacity: 1,
         color: "white",
@@ -140,9 +177,11 @@ function highlightFeature(e) {
         fillOpacity: 0,
     });
     layer.bringToFront();
+    info.update(layer.feature.properties);
 }
 function resetHighlight(e) {
     geojson.resetStyle(e.target);
+    info.update();
 }
 
 function zoomToFeature(e) {
@@ -159,6 +198,7 @@ function onEachFeature(feature, layer) {
 
 
 //Auto Complete 
+
 const countryInput = document.querySelector('#textbox');
 const resList = document.querySelector('.autocompleteList');
 
@@ -184,17 +224,27 @@ function showResults(val) {
 
 //Event Listener for autocomplete
 
-resList.onclick = async (evt) => {
-    let country = evt.target.innerHTML;
-    let obj = timeData.find(o => o.name === country)
-    origin_time = obj.timezone_offset;
-    createMap(obj.latlong)
-    document.querySelector('.backfiller').remove();
-} 
-
-countryInput.addEventListener("keyup", (evt) => {
-    showResults(countryInput.value);
-    if (evt.key === "Enter") {
+document.addEventListener("DOMContentLoaded", () => {
+    fetch(`${document.URL}timeData`)
+    .then((response) => response.json())
+    .then((data) => timeDataHandle(data));
+   
+    fetch(`${document.URL}countriesData`)
+    .then((response) => response.json())
+    .then((data) => geoJsonData = data);
+    
+    resList.onclick = async (evt) => {
+        let country = evt.target.innerHTML;
+        let obj = timeData.find(o => o.name === country)
+        origin_time = obj.timezone_offset;
+        createMap(obj.latlong)
         document.querySelector('.backfiller').remove();
-    }
+    } 
+    
+    countryInput.addEventListener("keyup", (evt) => {
+        showResults(countryInput.value);
+        if (evt.key === "Enter") {
+            document.querySelector('.backfiller').remove();
+        }
+    });
 });
