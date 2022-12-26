@@ -129,7 +129,6 @@ info.update = function (props) {
 };
 
 info.detail = function (props)  {
-    let initDate = new Date().getTime(); 
     let obj = timeData.find(o => o.name === props.ADMIN)
     let offset1 = new Date().getTimezoneOffset(),
         offset2 = obj.timezone_offset;
@@ -142,27 +141,31 @@ info.detail = function (props)  {
     offset1 = offset1*60*1000;
     offset2 = (hrs*60*60*1000)+(mins*60*1000);
     
-    let date = new Date(initDate + offset1 + offset2);
+    let initDate = new Date().getTime(); 
+    let date = new Date(initDate + offset1 + offset2+1125);
 
     let hh = date.getHours();
     let mm = date.getMinutes();
     let ss = date.getSeconds();
-  
-     hh = (hh < 10) ? "0" + hh : hh;
-     mm = (mm < 10) ? "0" + mm : mm;
-     ss = (ss < 10) ? "0" + ss : ss;
+    
+    if(hh<10)   hh = "0" + hh;
+    if(mm < 10) mm = "0" + mm;
+    if(ss < 10) ss = "0" + ss;
       
-     let time = hh + ":" + mm + ":" + ss;
-    this._div.innerHTML =  this._div.innerHTML = '<h4>Current Time</h4>'+'<b>' 
-    + props.ADMIN + '</b><br />'+time+'<br>';
+    let time = `${hh}:${mm}:${ss}`;
+    
+    offset2 = obj.timezone_offset;
+    if(offset2>0)
+        offset2= "+"+offset2;
+
+    this._div.innerHTML =  `<div>
+    <h4>Date and Time</h4>
+    <b>${props.ADMIN}</b><br>
+    <p id="time">${time}<\p>
+    <p>${date.toDateString()} (UTC${offset2})</p></div>`;
     
     timer = setTimeout(function(){ info.detail(props) }, 1000);
 }
-
-function timediff(time, offset) {
-    let offsetArr 
-}
-
 
 //Map Styling
 
