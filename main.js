@@ -3,7 +3,7 @@ let geojson;        //geojson map layer
 let hash = new Map();
 let countriesList = [];
 const maps ={};
-let origin_time, vectorGrid, props;  //UTC Offset of selected Native Region
+let origin_time, vectorGrid, props, marker=null;  //UTC Offset of selected Native Region
 let timer;
 
 
@@ -226,9 +226,12 @@ function resetHighlight(e) {
 
 function zoomToFeature(e) {
     maps[0].fitBounds(e.target.getBounds());
+    if(marker)
+        maps[0].removeLayer(marker)
     props = e.target.feature.properties;
     clearTimeout(timer);
     info.detail(props);
+    marker = L.marker(e.latlng).addTo(maps[0]);
 }
 
 function onEachFeature(feature, layer) {
