@@ -51,7 +51,8 @@
 #textbox {
     margin: 5vh;
     font-size: 18pt;
-    width: 30vw;
+    /* width: 30vw; */
+    max-width: 90%;
     box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
     margin: 0;
     margin-top: 5vh;
@@ -60,6 +61,7 @@
 .autocompleteList {
     margin-top: 2vh;
     width: 30vw;
+    max-width: 60%;
     padding-left: 3px;
     box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
     max-height: 50vh;
