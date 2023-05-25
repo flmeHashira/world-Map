@@ -99,7 +99,7 @@ legend.onAdd = function (map) {
     let grades = [-9,-7,-5,-3,-1,2,4,6,8,9];
     let div = L.DomUtil.create('div', 'info legend'),
         labels = [];
-
+    div.innerHTML+= '<h4>Time Offset</h4>'
     // loop through our density intervals and generate a label with a colored square for each interval
     div.innerHTML +=
     '<i style="background:'+getColor(-11)+'"></i>'+'<'+grades[0]+'<br>'; 
